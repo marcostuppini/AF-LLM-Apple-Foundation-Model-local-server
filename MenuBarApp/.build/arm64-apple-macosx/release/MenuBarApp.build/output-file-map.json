@@ -1,0 +1,13 @@
+{
+  "": {
+    "dependencies": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/MenuBarApp.d",
+    "object": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/MenuBarApp.o",
+    "swift-dependencies": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/primary.swiftdeps"
+  },
+  "/Volumes/Memory+/AF-LLM/MenuBarApp/Sources/MenuBarApp/main.swift": {
+    "object": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/main.swift.o",
+    "swiftmodule": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/main.swiftdeps",
+    "diagnostics": "/Volumes/Memory+/AF-LLM/MenuBarApp/.build/arm64-apple-macosx/release/MenuBarApp.build/main.dia"
+  }
+}
