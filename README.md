@@ -43,6 +43,11 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 - Model: apple-local
 - API Key: (vuota)
 
+### Impostazioni Predefinite
+- Temperature: 0.7
+- Top-P: 0.9
+- Max Tokens: 32768
+
 ## Documentazione
 
 Vedi [MANUAL.md](MANUAL.md) per il manuale completo con:

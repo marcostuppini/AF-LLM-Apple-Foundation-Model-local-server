@@ -29,6 +29,7 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var startupReportTextView: NSTextView?
     var startupLogBuffer: String = ""
     var startupReportVisible: Bool = false
+    var startupReportTimer: Timer?
     // Startup log file path (per-user logs)
     let startupLogFilePath = "\(NSHomeDirectory())/Library/Logs/AF-LLM/startup.log"
     // Max size before rotation (2 MB)
@@ -37,12 +38,12 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         startupLogBuffer += line + "\n"
         let bufferSnapshot = startupLogBuffer
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            if !self.startupReportVisible {
-                self.showStartupReport()
+            guard let self = self, self.startupReportVisible else { return }
+            // Only update if window still exists
+            if self.startupReportWindow != nil && self.startupReportTextView != nil {
+                self.startupReportTextView?.string = bufferSnapshot
+                self.startupReportTextView?.scrollToEndOfDocument(nil)
             }
-            self.startupReportTextView?.string = bufferSnapshot
-            self.startupReportTextView?.scrollToEndOfDocument(nil)
         }
         writeStartupLogToFileSync(line)
     }
@@ -83,10 +84,21 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     
     func showStartupReport() {
-        if startupReportWindow != nil {
-            startupReportWindow?.makeKeyAndOrderFront(nil)
+        // If window exists and is visible, just bring to front and reset timer
+        if let window = startupReportWindow, startupReportVisible {
+            window.makeKeyAndOrderFront(nil)
+            resetAutoCloseTimer()
             return
         }
+        
+        // Clean up any stale references before creating new window
+        if startupReportWindow != nil {
+            startupReportTimer?.invalidate()
+            startupReportTimer = nil
+            startupReportWindow = nil
+            startupReportTextView = nil
+        }
+        
         let w = NSWindow(contentRect: NSRect(x: 20, y: 40, width: 520, height: 260),
                          styleMask: [.titled, .closable], backing: .buffered, defer: false)
         w.title = "AF-LLM Startup Report"
@@ -104,13 +116,31 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         startupReportWindow = w
         startupReportTextView = tv
         startupReportVisible = true
+        
+        // Auto-close after 30 seconds
+        resetAutoCloseTimer()
+    }
+    
+    func resetAutoCloseTimer() {
+        startupReportTimer?.invalidate()
+        startupReportTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: false) { [weak self] _ in
+            guard let self = self, self.startupReportVisible else { return }
+            self.closeStartupReport()
+        }
     }
     
     func closeStartupReport() {
+        // Always invalidate timer first
+        startupReportTimer?.invalidate()
+        startupReportTimer = nil
+        
+        // Guard against double-close
+        guard startupReportVisible else { return }
+        
+        startupReportVisible = false
         startupReportWindow?.close()
         startupReportWindow = nil
         startupReportTextView = nil
-        startupReportVisible = false
     }
 
     @objc func showStartupReportFromMenu() {
@@ -136,6 +166,9 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         if let window = notification.object as? NSWindow, window === startupReportWindow {
+            // Invalidate timer first to prevent race condition
+            startupReportTimer?.invalidate()
+            startupReportTimer = nil
             startupReportWindow = nil
             startupReportTextView = nil
             startupReportVisible = false
@@ -445,64 +478,56 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         // Use simple frame-based layout only - no Auto Layout mixing
-        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 280),
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 310),
                          styleMask: [.titled, .closable], backing: .buffered, defer: true)
         w.title = "AF-LLM Settings"
         w.isReleasedWhenClosed = false
         w.center()
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 280))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 310))
 
-        // Header line: icon + title + endpoint
-        let headerY: CGFloat = 245
+        // Header: large icon + title
+        let headerY: CGFloat = 240
         
-        // Status icon in header
+        // Large status icon (48x48)
         if serverRunning {
             if let icon = loadMenuBarIcon() {
                 icon.isTemplate = false
-                let iconView = NSImageView(frame: NSRect(x: 20, y: headerY, width: 18, height: 18))
+                let iconView = NSImageView(frame: NSRect(x: 20, y: headerY, width: 48, height: 48))
                 iconView.image = icon
                 content.addSubview(iconView)
             }
         } else {
             if let symbol = NSImage(systemSymbolName: "server.rack", accessibilityDescription: nil) {
-                let iconView = NSImageView(frame: NSRect(x: 20, y: headerY, width: 18, height: 18))
+                let iconView = NSImageView(frame: NSRect(x: 20, y: headerY, width: 48, height: 48))
                 iconView.image = symbol
                 content.addSubview(iconView)
             }
         }
 
-        // Title
-        let headerTitle = NSTextField(labelWithString: "Model Settings")
-        headerTitle.font = NSFont.boldSystemFont(ofSize: 16)
-        headerTitle.frame = NSRect(x: 48, y: headerY - 2, width: 160, height: 22)
+        // Title next to icon
+        let headerTitle = NSTextField(labelWithString: "Apple Foundation LLM")
+        headerTitle.font = NSFont.boldSystemFont(ofSize: 18)
+        headerTitle.frame = NSRect(x: 80, y: headerY + 22, width: 250, height: 24)
         content.addSubview(headerTitle)
+        
+        let subtitleTitle = NSTextField(labelWithString: "Local Server • apple-local")
+        subtitleTitle.font = NSFont.systemFont(ofSize: 14)
+        subtitleTitle.textColor = NSColor.secondaryLabelColor
+        subtitleTitle.frame = NSRect(x: 80, y: headerY, width: 200, height: 20)
+        content.addSubview(subtitleTitle)
 
-        // Endpoint label
-        let epLabel = NSTextField(labelWithString: "Endpoint:")
-        epLabel.font = NSFont.systemFont(ofSize: 12)
-        epLabel.textColor = NSColor.secondaryLabelColor
-        epLabel.frame = NSRect(x: 220, y: headerY, width: 70, height: 20)
-        content.addSubview(epLabel)
+        // Server info section
+        let infoBox = NSBox(frame: NSRect(x: 20, y: 195, width: 360, height: 36))
+        infoBox.titlePosition = .noTitle
+        infoBox.boxType = .primary
+        infoBox.fillColor = NSColor.controlBackgroundColor
+        content.addSubview(infoBox)
 
-        // Endpoint value
-        endpointValueLabel = NSTextField(labelWithString: "http://localhost:8080")
-        endpointValueLabel?.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        endpointValueLabel?.frame = NSRect(x: 290, y: headerY, width: 100, height: 20)
-        endpointValueLabel?.alignment = .left
-        if let ep = endpointValueLabel { content.addSubview(ep) }
-
-        // Server status box
-        let serverBox = NSBox(frame: NSRect(x: 20, y: 200, width: 360, height: 38))
-        serverBox.titlePosition = .noTitle
-        serverBox.boxType = .primary
-        serverBox.fillColor = NSColor.controlBackgroundColor
-        content.addSubview(serverBox)
-
-        let serverLabel = NSTextField(labelWithString: "Server: http://localhost:8080")
-        serverLabel.font = NSFont.systemFont(ofSize: 12)
-        serverLabel.frame = NSRect(x: 10, y: 8, width: 200, height: 20)
-        serverBox.addSubview(serverLabel)
+        let serverLabel = NSTextField(labelWithString: "Endpoint: http://localhost:8080/v1")
+        serverLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        serverLabel.frame = NSRect(x: 10, y: 8, width: 220, height: 20)
+        infoBox.addSubview(serverLabel)
 
         let statusText = serverRunning ? "● Running" : "○ Stopped"
         statusIndicator = NSTextField(labelWithString: statusText)
@@ -510,7 +535,7 @@ class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusIndicator?.textColor = serverRunning ? NSColor.systemGreen : NSColor.secondaryLabelColor
         statusIndicator?.frame = NSRect(x: 250, y: 8, width: 100, height: 20)
         statusIndicator?.alignment = .right
-        if let si = statusIndicator { serverBox.addSubview(si) }
+        if let si = statusIndicator { infoBox.addSubview(si) }
 
         // Temperature
         let tLabel = NSTextField(labelWithString: "Temperature:")

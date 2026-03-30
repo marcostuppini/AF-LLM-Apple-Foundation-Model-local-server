@@ -87,6 +87,26 @@ L'app appare come un'icona nella barra dei menu (in alto a destra dello schermo)
 
 #### Open Settings…
 Apre un pannello con le impostazioni del modello:
+
+```
+┌─────────────────────────────────────────────┐
+│  [ICON]  Apple Foundation LLM              │
+│          Local Server • apple-local        │
+│                                             │
+│  ┌───────────────────────────────────────┐ │
+│  │ Endpoint: http://localhost:8080/v1   ●│ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  Temperature:  [========]  0.70            │
+│  Top-P:        [========]  0.90            │
+│  Max Tokens:   [========]  32768           │
+│                                             │
+│  API: /v1/chat/completions    [Apply & Restart]
+└─────────────────────────────────────────────┘
+```
+
+- **Header**: Icona grande (48x48) con titolo "Apple Foundation LLM" e sottotitolo "Local Server • apple-local"
+- **Info Server**: Box informativo con endpoint e stato (Running/Stopped)
 - **Temperature** (0.0 - 2.0): Controlla la casualità delle risposte
   - Valori bassi (0.0-0.5): Risposte più deterministiche
   - Valori medi (0.5-1.0): Bilanciamento
@@ -94,7 +114,8 @@ Apre un pannello con le impostazioni del modello:
 - **Top-P** (0.0 - 1.0): Nucleus sampling
   - Valori bassi: Risposte più concentrate
   - Valori alti: Risposte più variabili
-- **Max Tokens** (1 - 2048): Lunghezza massima della risposta
+- **Max Tokens** (256 - 32768): Lunghezza massima della risposta
+- **Apply & Restart**: Applica le impostazioni e riavvia il server
 
 #### Quit
 Chiude l'app e ferma il server (se in esecuzione).
@@ -366,6 +387,20 @@ Content-Type: application/json
 ---
 
 ## Cronologia Versioni
+
+### v1.1.1
+- Fix crash: race condition nel timer dello Startup Report
+- Fix crash: accesso a oggetti deallocati in appendStartupLog
+- Fix crash: windowWillClose invalida ora il timer
+- Prevenzione double-close dello Startup Report
+
+### v1.1.0
+- Finestra Settings ridisegnata con icona grande (48x48)
+- Titolo "Apple Foundation LLM" con sottotitolo "Local Server • apple-local"
+- Box informativo con endpoint e stato server
+- Finestra più alta (310px) per evitare overlap
+- Max Tokens esteso fino a 32768
+- Startup Report si chiude automaticamente dopo 30 secondi
 
 ### v1.0.0
 - Prima release
